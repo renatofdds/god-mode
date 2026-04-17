@@ -344,11 +344,25 @@ Appends to key sequence KEY-STRING-SO-FAR."
 
 (defun god-mode-lookup-command (key-string)
   "Look up and return the command for KEY-STRING.
-Tries fallback for the last key by removing Control modifier. If no command is found,
-returns a keymap to allow further key input, or nil if completely unbound."
+Tries fallback for the last key by removing Control or Shift modifier.
+If no command is found, returns a keymap to allow further key input, or nil if completely unbound."
   (when key-string
     (let* ((key-vector (read-kbd-macro key-string t))
            (binding (key-binding key-vector)))
+      (when (null binding)
+        (let (fallback-key fallback-vector fallback-binding)
+					(cond
+					 ((string-match "\\(.*\\)S-\\([a-z]\\)$" key-string)
+            (setq fallback-key (concat (match-string 1 key-string) (upcase (match-string 2 key-string)))
+                  fallback-vector (read-kbd-macro fallback-key t)
+                  fallback-binding (key-binding fallback-vector)))
+					 ((string-match "\\(.*\\)S-\\(<[^>]+>\\)$" key-string)
+            (setq fallback-key (concat (match-string 1 key-string) (match-string 2 key-string))
+                  fallback-vector (read-kbd-macro fallback-key t)
+                  fallback-binding (key-binding fallback-vector))))
+          (when fallback-binding
+            (setq key-vector fallback-vector
+                  binding fallback-binding))))
       (cond
        ;; Case 1: found an actual command
        ((commandp binding)
